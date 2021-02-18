@@ -8,6 +8,7 @@ from sklearn.preprocessing import MinMaxScaler
 from torchvision import transforms
 
 
+# TODO: Differentiate between Pretrain Dataset and SSL dataset
 class ClassificationDataset(torch.utils.data.Dataset):
     """Usage:
 
