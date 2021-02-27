@@ -3,12 +3,13 @@ import os
 import numpy as np
 import torch
 import pandas as pd
+from PIL import Image
+import pydicom
 
 from sklearn.preprocessing import MinMaxScaler
 from torchvision import transforms
 
 
-# TODO: Differentiate between Pretrain Dataset and SSL dataset
 class ClassificationDataset(torch.utils.data.Dataset):
     """Usage:
 
@@ -32,7 +33,7 @@ class ClassificationDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         # load images
         img_path = os.path.join(self.root, self.mode, self.imgs[idx])
-        img = np.load(img_path)
+        img = load_img(img_path)
 
         # normalize to [0, 1]
         scaler = MinMaxScaler()
@@ -50,12 +51,33 @@ class ClassificationDataset(torch.utils.data.Dataset):
             # use the first channel as last channel again
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
-
-        train_transform = transforms.Compose([
-            self.trans,
-            target_transform,
-        ])
+        if self.trans is not None:
+            train_transform = transforms.Compose([
+                self.trans,
+                target_transform,
+            ])
+        else:
+            train_transform = target_transform
 
         img = train_transform(img) if self.mode == "train" else target_transform(img)
 
         return img, labels
+
+
+# TODO: move to utils.
+def load_img(image_path):
+    """loads image into numpy array.
+
+    Args:
+        image_path (String): a string path to the image.
+    """
+    ext = os.path.basename(image_path).split(".")[1]
+    if ext == "dcm":
+        image = pydicom.read_file(image_path)
+        image = image.pixel_array
+    elif ext in ["png", "jpg"]:
+        image = Image.open(image_path)
+        image = np.array(image)
+    else:
+        raise ValueError(f"the image has unsupprted extension: {ext}")
+    return image
