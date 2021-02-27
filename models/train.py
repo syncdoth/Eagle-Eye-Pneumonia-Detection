@@ -67,13 +67,14 @@ def train(model, optimizer, train_dataset, device, loss_func, val_dataset=None, 
 
         save_checkpoint(epoch, model, optimizer, '{}_{}_model'.format(epoch, val_loss))  # save_checkpoint
 
-    return history     
-    
+    return history
+
 
 def do_train_step(model, optimizer, loss_func, batch, is_train=True):
     """inner training step"""
     optimizer.zero_grad()
     class_score = model(batch["images"])
+    # TODO: Add metric calculation
     loss = loss_func(class_score, batch["targets"])
 
     #     predicted = torch.max(class_score.data, 1)[1]
