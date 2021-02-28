@@ -22,6 +22,7 @@ def train(model, optimizer, train_dataset, device, loss_func, val_dataset=None, 
                 batch[key] = batch[key].to(device)
             loss = do_train_step(model, optimizer, loss_func, batch)
             # TODO: Add support for metrics, checkpointing, validation, history, etc.
+            print('git_test')
             print(f"current loss: {loss}")
 
 
