@@ -1,4 +1,5 @@
 from tqdm.auto import tqdm
+from sklearn.metrics import f1_score
 
 
 def make_batch(batch):
@@ -14,27 +15,60 @@ def make_batch(batch):
 
 def train(model, optimizer, train_dataset, device, loss_func, val_dataset=None, epochs=1):
     """Outer training loop"""
+    history = dict(train_f1=[],train_loss=[],val_f1=[],val_loss=[])
+
+
     for epoch in range(epochs):
-        # TODO: add more history categories
-        loss_history = []
-        f1_history = []
-        val_history = []
+        train_loss = []
+        train_f1 = []
 
         model.train(True)
         train_bar = tqdm(train_dataset, desc=f'[train {epoch+1}/{epochs}]')
+
         for batch in train_bar:
             for key in batch.keys():
                 batch[key] = batch[key].to(device)
-            loss = do_train_step(model, optimizer, loss_func, batch)
-            loss_history.append(loss)
-            # TODO: Add support for metrics, checkpointing, validation, history, etc.
-            print(f"current loss: {loss}")
-        # validation loop
+
+            loss, f1 = do_train_step(model, optimizer, loss_func, batch)
+
+            print(f"current loss: {loss}, current f1_score: {f1}",end=' /')
+            train_loss.append(loss)
+            train_f1.append(f1)
+
+        train_loss = np.mean(train_loss)
+        train_f1 = np.mean(train_f1)
+        history['train_loss'].append(train_loss)
+        history['train_f1'].append(train_f1)
+
+        ### valid
+
+        if val_dataset is None:
+            save_checkpoint(epoch,model,optimizer,'{}_{}_model'.format(epoch,train_loss))#save_checkpoint
+            continue
+
+        val_loss = []
+        val_f1 = []
+
         model.eval()
-        for batch in val_dataset:
-            # no back prop (no model update)
-            ### loss 와 metric 뽑아서 history 에 추가
-            raise NotImplementedError
+        with torch.no_grad():
+            for batch in val_dataset:
+                for key in batch.keys():
+                    batch[key] = batch[key].to(device)
+
+                loss, f1 = do_train_step(model, optimizer, loss_func, batch, is_train=False)
+                print(f"validation: current loss: {loss}, current f1_score: {f1}")
+
+                val_loss.append(loss)
+                val_f1.append(f1)
+
+        val_loss = np.mean(val_loss)
+        val_f1 = np.mean(val_f1)
+        history['val_loss'].append(val_loss)
+        history['val_f1'].append(val_f1)
+
+        save_checkpoint(epoch,model,optimizer,'{}_{}_model'.format(epoch,val_loss)) # save_checkpoint
+
+    return history
 
 
 def do_train_step(model, optimizer, loss_func, batch, is_train=True):
@@ -43,7 +77,24 @@ def do_train_step(model, optimizer, loss_func, batch, is_train=True):
     class_score = model(batch["images"])
     # TODO: Add metric calculation
     loss = loss_func(class_score, batch["targets"])
+
+#     predicted = torch.max(class_score.data, 1)[1]
+#     batch_corr = (predicted == batch["targets"]).sum()
+#     get accuracy
+
+    f1_socre = f1_score(batch["targets"], predicted, average='macro')
+
     if is_train:
         loss.backward()
         optimizer.step()
-    return loss
+
+    return loss, f1_score
+
+
+def save_checkpoint(epoch, model, optimizer, filename):
+    state = {
+    'Epoch' = epoch,
+    'State_dict' = model.state_dict(),
+    'optimizer' = optimizer.state_dict()
+    }
+    torch.save(state,filename)
