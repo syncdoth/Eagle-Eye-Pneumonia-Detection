@@ -3,12 +3,11 @@ import os
 import numpy as np
 import torch
 import pandas as pd
-from PIL import Image
-import pydicom
-
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from torchvision import transforms
+
+from utils.utils import load_img
 
 
 class ClassificationDataset(torch.utils.data.Dataset):
@@ -16,9 +15,9 @@ class ClassificationDataset(torch.utils.data.Dataset):
 
     img, labels = dataset[idx]
 
-    img: [3, 224, 224] torch.Tensor for image?
+    img: [3, 224, 224] torch.Tensor for image
     labels: [1,] torch.Tensor. each image's label.
-        Pneumonia = 1, Covid = 2, normal = 0
+        Covid = 1, Other PN = 2, Viral PN = 3, normal = 0
     """
     def __init__(self, root="data_server", split=[0.8, 0.1, 0.1], trans=None):
         self.root = root
@@ -88,30 +87,3 @@ class ClassificationDataset(torch.utils.data.Dataset):
                                              stratify=labels[val_idx])
 
         return train_idx, val_idx, test_idx
-
-
-# TODO: move to utils.
-def load_img(image_path):
-    """loads image into numpy array.
-
-    Args:
-        image_path (String): a string path to the image.
-    """
-    ext = os.path.basename(image_path).split(".")[-1]
-    if ext == "dcm":
-        image = pydicom.read_file(image_path)
-        image = image.pixel_array
-
-    elif ext in ["png", "jpg", "jpeg"]:
-        image = Image.open(image_path)
-        image = np.array(image)
-
-    else:
-        raise ValueError(f"the image has unsupprted extension: {ext}")
-
-    if len(image.shape) == 2:
-        image = np.repeat(image[:, :, np.newaxis], 3,
-                          axis=2)  # make it 3 channel by repeating
-
-    image = image.transpose(2, 0, 1)  # [C, H, W]
-    return image
