@@ -11,7 +11,7 @@ import torchvision.transforms.functional as F
 from utils.utils import load_img
 
 
-class DetectionDataset():
+class DetectionDataset(torch.utils.data.Dataset):
     """Usage:
 
     img, target = dataset[idx]
@@ -87,9 +87,10 @@ class DetectionDataset():
 
         img = train_transform(img) if idx in self.train_idx else target_transform(img)
         # target dict of tensors
-        target = {}
-        target["boxes"] = torch.Tensor(boxes)
-        target["labels"] = torch.Tensor(labels).long()
+        target = {
+            "boxes": torch.Tensor(boxes),
+            "labels": torch.Tensor(labels).long(),
+        }
 
         return img, target
 
