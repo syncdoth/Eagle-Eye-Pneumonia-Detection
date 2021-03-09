@@ -67,8 +67,8 @@ def train(model, optimizer, train_dataset, device, loss_func, val_dataset=None, 
 
         save_checkpoint(epoch, model, optimizer, '{}_{}_model'.format(epoch, val_loss))  # save_checkpoint
 
-    return history
-
+    return history     
+    
 
 def do_train_step(model, optimizer, loss_func, batch, is_train=True):
     """inner training step"""
@@ -92,9 +92,7 @@ def do_train_step(model, optimizer, loss_func, batch, is_train=True):
 def save_checkpoint(epoch, model, optimizer, filename):
     state = {
         'Epoch' = epoch,
-                  'State_dict' = model.state_dict(),
-                                 'optimizer' = optimizer.state_dict()
+        'State_dict' = model.state_dict(),
+        'optimizer' = optimizer.state_dict()
     }
-    torch.save(state, filename)
-
-
+    torch.save(state,filename)
