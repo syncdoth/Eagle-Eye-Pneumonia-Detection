@@ -7,10 +7,8 @@ from math import ceil
 class TypeClassifier(torch.nn.Module):
     def __init__(self):
         raise NotImplementedError
-            
 
-    def forward(self,X):
+    def forward(self, X):
         logit = self.EN(X)
-        
-        return logit
 
+        return logit
