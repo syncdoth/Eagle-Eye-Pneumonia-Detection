@@ -36,7 +36,7 @@ class DetectionDataset(torch.utils.data.Dataset):
             'Viral-PN': 3
         }
 
-        self.data_path = pd.read_csv(os.path.join(root, "class/meta/metadata.csv"))
+        self.data_path = pd.read_csv(os.path.join(root, "class/meta/final_metadata.csv"))
         self.data_path["IMG_PATH"] = self.data_path["FILE_PATH"].map(
             lambda x: x[2:]) + self.data_path["FILE NAME"]
         self.imgs = list(dict.fromkeys(self.data_path["IMG_PATH"].to_list()))
