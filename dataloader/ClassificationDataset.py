@@ -49,7 +49,7 @@ class ClassificationDataset(torch.utils.data.Dataset):
         img_path = os.path.join(self.root, self.imgs[idx])
         img = load_img(img_path)
         label = self.labels[idx]
-        label = torch.Tensor(label).long()
+        label = torch.Tensor([label]).long()
 
         # normalize to [0, 1]
         scaler = MinMaxScaler()
