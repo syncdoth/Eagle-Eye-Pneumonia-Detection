@@ -2,7 +2,7 @@
 
 Currently, we are using EfficientNet implementations.
 """
-from efficientnet import EfficientNet
+from models.efficientnet import EfficientNet
 from efficientnet_pytorch import EfficientNet as EN_torch
 import torch
 import torch.nn

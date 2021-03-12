@@ -12,7 +12,7 @@ def make_batch(batch):
         images.append(img)
         targets.append(targ)
 
-    return {"images": images, "targets": targets}
+    return {"images": torch.stack(images, 0), "targets": torch.cat(targets)}
 
 
 def train(model, optimizer, train_dataset, device, loss_func, val_dataset=None, epochs=1):
@@ -86,7 +86,7 @@ def do_train_step(model, optimizer, loss_func, batch, is_train=True):
     loss = loss_func(class_score, batch["targets"])
 
     predicted = torch.max(class_score.data, 1)[1]
-    f1 = f1_score(batch["targets"], predicted, average="macro")
+    f1 = f1_score(batch["targets"].cpu(), predicted.cpu(), average="macro")
 
     if is_train:
         loss.backward()
