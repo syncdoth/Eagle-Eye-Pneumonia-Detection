@@ -3,7 +3,6 @@ import torch
 from tqdm.auto import tqdm
 from sklearn.metrics import f1_score
 from sklearn.metrics import classification_report
-import os
 
 def make_batch(batch):
     """Used as collate_fn in pytorch Dataloader."""
