@@ -26,6 +26,11 @@ def load_img(image_path):
     if len(image.shape) == 2:
         image = np.repeat(image[:, :, np.newaxis], 3,
                           axis=2)  # make it 3 channel by repeating
+        
+    if image.shape[2] == 4:
+        image = Image.fromarray(image)
+        image = image.convert('RGB')
+        image = np.array(image)  # make 4 channel to 3 channel
 
     image = image.transpose(2, 0, 1)  # [C, H, W]
     return image
