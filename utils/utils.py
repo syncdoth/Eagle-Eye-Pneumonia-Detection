@@ -11,7 +11,7 @@ def load_img(image_path):
     Args:
         image_path (String): a string path to the image.
     """
-    ext = os.path.basename(image_path).split(".")[-1]
+    ext = os.path.basename(image_path).split(".")[-1].lower()
     if ext == "dcm":
         image = pydicom.read_file(image_path)
         image = image.pixel_array
@@ -26,7 +26,7 @@ def load_img(image_path):
     if len(image.shape) == 2:
         image = np.repeat(image[:, :, np.newaxis], 3,
                           axis=2)  # make it 3 channel by repeating
-        
+
     if image.shape[2] == 4:
         image = Image.fromarray(image)
         image = image.convert('RGB')
