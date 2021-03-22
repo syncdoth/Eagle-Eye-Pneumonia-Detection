@@ -40,18 +40,9 @@ class ClassificationDataset(torch.utils.data.Dataset):
         self.labels = self.data_path["CLASS"].map(lambda x: self.class2id[x]).to_numpy()
 
         pos_idx, neg_idx = self.negative_sampling(neg_prop)
-        data_idx = np.concatenate(pos_idx, neg_idx)
+        data_idx = np.concatenate([pos_idx, neg_idx])
         self.imgs, self.labels = self.imgs[data_idx], self.labels[data_idx]
         self.train_idx, self.val_idx, self.test_idx = self.dataset_split()
-
-    def negative_sampling(self, neg_prop=0.5):
-        pos_idx = np.where(self.labels > 0)[0]
-        num_neg = int(pos_idx.shape[0] * neg_prop)
-
-        neg_idx = np.where(self.labels == 0)[0]
-        sampled_neg_idx = np.random.choice(neg_idx, num_neg, replace=False)
-
-        return pos_idx, sampled_neg_idx
 
     def __len__(self):
         return self.imgs.shape[0]
@@ -100,3 +91,12 @@ class ClassificationDataset(torch.utils.data.Dataset):
                                              stratify=labels[val_idx])
 
         return train_idx, val_idx, test_idx
+
+    def negative_sampling(self, neg_prop=0.5):
+        pos_idx = np.where(self.labels > 0)[0]
+        num_neg = int(pos_idx.shape[0] * neg_prop)
+
+        neg_idx = np.where(self.labels == 0)[0]
+        sampled_neg_idx = np.random.choice(neg_idx, num_neg, replace=False)
+
+        return pos_idx, sampled_neg_idx
