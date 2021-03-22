@@ -19,7 +19,7 @@ class ClassificationDataset(torch.utils.data.Dataset):
     labels: [1,] torch.Tensor. each image's label.
         Covid = 1, Other PN = 2, Viral PN = 3, normal = 0
     """
-    def __init__(self, root="data_server", split=[0.8, 0.1, 0.1], trans=None):
+    def __init__(self, root="data_server", split=[0.8, 0.1, 0.1], trans=None, neg_prop=0.5):
         self.root = root
         self.split = split
         self.trans = trans
@@ -39,7 +39,19 @@ class ClassificationDataset(torch.utils.data.Dataset):
         self.imgs = self.data_path["IMG_PATH"].to_numpy()
         self.labels = self.data_path["CLASS"].map(lambda x: self.class2id[x]).to_numpy()
 
+        pos_idx, neg_idx = self.negative_sampling(neg_prop)
+        data_idx = np.concatenate(pos_idx, neg_idx)
+        self.imgs, self.labels = self.imgs[data_idx], self.labels[data_idx]
         self.train_idx, self.val_idx, self.test_idx = self.dataset_split()
+
+    def negative_sampling(self, neg_prop=0.5):
+        pos_idx = np.where(self.labels > 0)[0]
+        num_neg = int(pos_idx.shape[0] * neg_prop)
+
+        neg_idx = np.where(self.labels == 0)[0]
+        sampled_neg_idx = np.random.choice(neg_idx, num_neg, replace=False)
+
+        return pos_idx, sampled_neg_idx
 
     def __len__(self):
         return self.imgs.shape[0]
