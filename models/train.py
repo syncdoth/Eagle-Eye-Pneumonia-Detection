@@ -84,8 +84,7 @@ def train(model, optimizer, train_dataset, device, loss_func, val_dataset=None, 
             f" report:\n{report}")
         if report["accuracy"] > curr_best_val_acc:
             curr_best_val_acc = report["accuracy"]
-            save_checkpoint(epoch, model, optimizer,
-                            "acc_{}_model".format(curr_best_val_acc))  # save_checkpoint
+            save_checkpoint(epoch, model, optimizer, "model.pth")  # save_checkpoint
 
     return history
 
