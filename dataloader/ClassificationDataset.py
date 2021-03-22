@@ -5,6 +5,7 @@ import torch
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
+from sklearn.utils.class_weight import compute_class_weight
 from torchvision import transforms
 
 from utils.utils import load_img
@@ -84,7 +85,7 @@ class ClassificationDataset(torch.utils.data.Dataset):
                                               test_size=self.split[1] + self.split[2],
                                               shuffle=True,
                                               stratify=labels)
-        val_idx, test_idx = train_test_split(np.arange(len(val_idx)),
+        val_idx, test_idx = train_test_split(val_idx,
                                              test_size=self.split[2] /
                                              (self.split[1] + self.split[2]),
                                              shuffle=True,
@@ -100,3 +101,8 @@ class ClassificationDataset(torch.utils.data.Dataset):
         sampled_neg_idx = np.random.choice(neg_idx, num_neg, replace=False)
 
         return pos_idx, sampled_neg_idx
+    
+    def get_class_weights(self):
+        return compute_class_weight('balanced',
+                                    classes=np.unique(self.labels[self.train_idx]),
+                                    y=self.labels[self.train_idx])
