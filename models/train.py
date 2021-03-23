@@ -41,6 +41,7 @@ def train(model,
         with open(history_name, "rb") as handle:
             history = pickle.load(handle)
     else:
+        resuming_epoch = -1
         os.makedirs(model_dir, exist_ok=True)
 
     for epoch in range(resuming_epoch + 1, epochs):
