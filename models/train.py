@@ -1,4 +1,5 @@
 import os
+import pickle
 
 import torch
 from tqdm.auto import tqdm
@@ -23,20 +24,26 @@ def train(model,
           loss_func,
           val_dataset=None,
           epochs=1,
-          model_save_name=None):
+          model_dir=None):
     """Outer training loop"""
     history = dict(train_acc=[], train_loss=[], val_acc=[], val_f1=[], val_loss=[])
     curr_best_val_acc = 0
 
-    if os.path.exists(model_save_name):
-        checkpoint = torch.load(model_save_name)
+    if os.path.exists(model_dir):
+        model_name = os.path.join(model_dir, "model.pth")
+        history_name = os.path.join(model_dir, "hist.pickle")
+
+        checkpoint = torch.load(model_name)
         model.load_state_dict(checkpoint["State_dict"])
         optimizer.load_state_dict(checkpoint["optimizer"])
         resuming_epoch = checkpoint["Epoch"]
         print(f"resuming training from epoch {resuming_epoch + 1}...")
+        with open(history_name, "rb") as handle:
+            history = pickle.load(handle)
+    else:
+        os.makedirs(model_dir, exist_ok=True)
 
     for epoch in range(resuming_epoch + 1, epochs):
-
         model.train(True)
         train_bar = tqdm(train_dataset, desc=f"[train {epoch + 1}/{epochs}]")
 
@@ -61,9 +68,9 @@ def train(model,
         print(f"[train] epoch: {epoch}, loss: {train_loss}," f" accracy: {train_acc}")
 
         ### valid
-
         if val_dataset is None:
-            save_checkpoint(epoch, model, optimizer, model_save_name)  #save_checkpoint
+            save_checkpoint(epoch, model, optimizer, model_name)  #save_checkpoint
+            save_history(history, history_name)
             continue
 
         val_running_loss = 0
@@ -94,7 +101,9 @@ def train(model,
               f" report:\n{classification_report(y_true, y_pred)}")
         if report["accuracy"] > curr_best_val_acc:
             curr_best_val_acc = report["accuracy"]
-            save_checkpoint(epoch, model, optimizer, model_save_name)  # save_checkpoint
+            save_checkpoint(epoch, model, optimizer, model_name)  # save_checkpoint
+        # save history after every epoch
+        save_history(history, history_name)
 
     return history
 
@@ -121,3 +130,8 @@ def save_checkpoint(epoch, model, optimizer, filename):
         "optimizer": optimizer.state_dict(),
     }
     torch.save(state, filename)
+
+
+def save_history(history, save_path):
+    with open(save_path, "wb") as handle:
+        pickle.dump(history, handle, protocol=pickle.HIGHEST_PROTOCOL)
