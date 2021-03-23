@@ -29,17 +29,17 @@ def train(model,
     history = dict(train_acc=[], train_loss=[], val_acc=[], val_f1=[], val_loss=[])
     curr_best_val_acc = 0
 
-    if os.path.exists(model_dir):
-        model_name = os.path.join(model_dir, "model.pth")
-        history_name = os.path.join(model_dir, "hist.pickle")
-
+    model_name = os.path.join(model_dir, "model.pth")
+    history_name = os.path.join(model_dir, "hist.pickle")
+    if os.path.exists(model_name):
         checkpoint = torch.load(model_name)
         model.load_state_dict(checkpoint["State_dict"])
         optimizer.load_state_dict(checkpoint["optimizer"])
         resuming_epoch = checkpoint["Epoch"]
         print(f"resuming training from epoch {resuming_epoch + 1}...")
-        with open(history_name, "rb") as handle:
-            history = pickle.load(handle)
+        if os.path.exists(history_name):
+            with open(history_name, "rb") as handle:
+                history = pickle.load(handle)
     else:
         resuming_epoch = -1
         os.makedirs(model_dir, exist_ok=True)
