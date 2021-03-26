@@ -1,5 +1,9 @@
+import os
+import pickle
+
+import torch
 from tqdm.auto import tqdm
-from sklearn.metrics import f1_score
+from sklearn.metrics import classification_report
 
 
 def make_batch(batch):
@@ -10,65 +14,100 @@ def make_batch(batch):
         images.append(img)
         targets.append(targ)
 
-    return {"images": images, "targets": targets}
+    return {"images": torch.stack(images, 0), "targets": torch.cat(targets)}
 
 
-def train(model, optimizer, train_dataset, device, loss_func, val_dataset=None, epochs=1):
+def train(model,
+          optimizer,
+          train_dataset,
+          device,
+          loss_func,
+          val_dataset=None,
+          epochs=1,
+          model_dir=None):
     """Outer training loop"""
-    history = dict(train_f1=[], train_loss=[], val_f1=[], val_loss=[])
+    history = dict(train_acc=[], train_loss=[], val_acc=[], val_f1=[], val_loss=[])
+    curr_best_val_acc = 0
 
-    for epoch in range(epochs):
-        train_loss = []
-        train_f1 = []
+    model_name = os.path.join(model_dir, "model.pth")
+    history_name = os.path.join(model_dir, "hist.pickle")
+    if os.path.exists(model_name):
+        checkpoint = torch.load(model_name)
+        model.load_state_dict(checkpoint["State_dict"])
+        optimizer.load_state_dict(checkpoint["optimizer"])
+        resuming_epoch = checkpoint["Epoch"]
+        print(f"resuming training from epoch {resuming_epoch + 1}...")
+        if os.path.exists(history_name):
+            with open(history_name, "rb") as handle:
+                history = pickle.load(handle)
+    else:
+        resuming_epoch = -1
+        os.makedirs(model_dir, exist_ok=True)
 
+    for epoch in range(resuming_epoch + 1, epochs):
         model.train(True)
-        train_bar = tqdm(train_dataset, desc=f'[train {epoch + 1}/{epochs}]')
+        train_bar = tqdm(train_dataset, desc=f"[train {epoch + 1}/{epochs}]")
+
+        correct_num = 0
+        total_num = 0
+        running_loss = 0
 
         for batch in train_bar:
             for key in batch.keys():
                 batch[key] = batch[key].to(device)
 
-            loss, f1 = do_train_step(model, optimizer, loss_func, batch)
+            pred, loss = do_train_step(model, optimizer, loss_func, batch)
+            running_loss += loss.item()
+            correct_num += (pred == batch["targets"]).sum().item()
+            total_num += batch["targets"].shape[0]
 
-            print(f"current loss: {loss}, current f1_score: {f1}", end=' /')
-            train_loss.append(loss)
-            train_f1.append(f1)
-
-        train_loss = np.mean(train_loss)
-        train_f1 = np.mean(train_f1)
-        history['train_loss'].append(train_loss)
-        history['train_f1'].append(train_f1)
+            train_loss = running_loss / total_num
+            train_acc = correct_num / total_num
+            history["train_loss"].append(train_loss)
+            history["train_acc"].append(train_acc)
+            train_bar.set_postfix(loss=train_loss, acc=train_acc)
+        print(f"[train] epoch: {epoch}, loss: {train_loss}," f" accracy: {train_acc}")
 
         ### valid
-
         if val_dataset is None:
-            save_checkpoint(epoch, model, optimizer, '{}_{}_model'.format(epoch, train_loss))  # save_checkpoint
+            save_checkpoint(epoch, model, optimizer, model_name)  #save_checkpoint
+            save_history(history, history_name)
             continue
 
-        val_loss = []
-        val_f1 = []
-
+        val_running_loss = 0
+        y_pred = []
+        y_true = []
         model.eval()
         with torch.no_grad():
-            for batch in val_dataset:
+            val_bar = tqdm(val_dataset, desc=f"[val {epoch + 1}/{epochs}]")
+            for batch in val_bar:
                 for key in batch.keys():
                     batch[key] = batch[key].to(device)
 
-                loss, f1 = do_train_step(model, optimizer, loss_func, batch, is_train=False)
-                print(f"validation: current loss: {loss}, current f1_score: {f1}")
+                pred, loss = do_train_step(model,
+                                           optimizer,
+                                           loss_func,
+                                           batch,
+                                           is_train=False)
+                val_running_loss += loss.item()
+                y_pred.extend(pred.tolist())
+                y_true.extend(batch["targets"].tolist())
 
-                val_loss.append(loss)
-                val_f1.append(f1)
+        report = classification_report(y_true, y_pred, output_dict=True)
+        val_loss = val_running_loss / len(val_dataset)
+        history["val_loss"].append(val_loss)
+        history["val_acc"].append(report["accuracy"])
+        history["val_f1"].append(report["macro avg"]["f1-score"])
+        print(f"[valid] epoch: {epoch}, loss: {val_loss},"
+              f" report:\n{classification_report(y_true, y_pred)}")
+        if report["accuracy"] > curr_best_val_acc:
+            curr_best_val_acc = report["accuracy"]
+            save_checkpoint(epoch, model, optimizer, model_name)  # save_checkpoint
+        # save history after every epoch
+        save_history(history, history_name)
 
-        val_loss = np.mean(val_loss)
-        val_f1 = np.mean(val_f1)
-        history['val_loss'].append(val_loss)
-        history['val_f1'].append(val_f1)
+    return history
 
-        save_checkpoint(epoch, model, optimizer, '{}_{}_model'.format(epoch, val_loss))  # save_checkpoint
-
-    return history     
-    
 
 def do_train_step(model, optimizer, loss_func, batch, is_train=True):
     """inner training step"""
@@ -76,23 +115,24 @@ def do_train_step(model, optimizer, loss_func, batch, is_train=True):
     class_score = model(batch["images"])
     loss = loss_func(class_score, batch["targets"])
 
-    #     predicted = torch.max(class_score.data, 1)[1]
-    #     batch_corr = (predicted == batch["targets"]).sum()
-    #     get accuracy
-
-    f1_socre = f1_score(batch["targets"], predicted, average='macro')
+    predicted = torch.max(class_score.data, 1)[1]
 
     if is_train:
         loss.backward()
         optimizer.step()
 
-    return loss, f1_score
+    return predicted, loss
 
 
 def save_checkpoint(epoch, model, optimizer, filename):
     state = {
-        'Epoch' = epoch,
-        'State_dict' = model.state_dict(),
-        'optimizer' = optimizer.state_dict()
+        "Epoch": epoch,
+        "State_dict": model.state_dict(),
+        "optimizer": optimizer.state_dict(),
     }
-    torch.save(state,filename)
+    torch.save(state, filename)
+
+
+def save_history(history, save_path):
+    with open(save_path, "wb") as handle:
+        pickle.dump(history, handle, protocol=pickle.HIGHEST_PROTOCOL)
