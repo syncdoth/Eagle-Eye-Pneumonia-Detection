@@ -10,6 +10,7 @@ from torchvision import transforms
 
 from utils.utils import load_img
 
+
 class AddGaussianNoise(object):
     def __init__(self, mean=0., std=1.):
         self.std = std
@@ -20,7 +21,8 @@ class AddGaussianNoise(object):
     
     def __repr__(self):
         return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
-        
+
+
 class ClassificationDataset(torch.utils.data.Dataset):
     """Usage:
 
@@ -33,6 +35,7 @@ class ClassificationDataset(torch.utils.data.Dataset):
     def __init__(self, root="data_server", split=[0.8, 0.1, 0.1], trans=None, neg_prop=0.5):
         self.root = root
         self.split = split
+
         self.trans = torchvision.transforms.Compose([
                 transforms.ToTensor(),
                 transforms.ColorJitter(brightness = [0.1,0.5], contrast=0, saturation=0, hue=0)
@@ -45,6 +48,7 @@ class ClassificationDataset(torch.utils.data.Dataset):
                                         fillcolor = None,
                                         resample = None)
                 AddGaussianNoise(0., 1.)])
+
         self.class2id = {
             'Normal': 0,
             'Not Normal': 0,
