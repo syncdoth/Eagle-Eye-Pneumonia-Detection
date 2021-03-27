@@ -9,6 +9,7 @@ pydicom
 tqdm
 seaborn
 matplotlib
+paramiko
 
 # Not for Colab
 jupyter
