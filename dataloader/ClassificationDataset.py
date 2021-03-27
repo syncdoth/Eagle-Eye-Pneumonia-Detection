@@ -3,12 +3,13 @@ import os
 import numpy as np
 import torch
 import pandas as pd
+import paramiko
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
 from torchvision import transforms
 
-from utils.utils import load_img
+from utils.utils import load_img, fetch_file_as_bytesIO
 
 
 class AddGaussianNoise(object):
@@ -39,6 +40,17 @@ class ClassificationDataset(torch.utils.data.Dataset):
                  split=[0.8, 0.1, 0.1],
                  trans=None,
                  neg_prop=0.5):
+
+        # sftp client
+        self.ssh_client = paramiko.SSHClient()
+        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        self.ssh_client.connect("isys313.iptime.org",
+                                username="server",
+                                password="1q2w3e4r",
+                                port=80)
+        self.ssh_client.get_transport().window_size = 3 * 1024 * 1024
+        self.sftp_client = self.ssh_client.open_sftp()
+
         self.root = root
         self.split = split
         self.trans = trans
@@ -50,7 +62,10 @@ class ClassificationDataset(torch.utils.data.Dataset):
             'Viral-PN': 3
         }
 
-        self.data_path = pd.read_csv(os.path.join(root, "class/meta/final_metadata.csv"))
+        data_file = fetch_file_as_bytesIO(
+            os.path.join(root, "class/meta/final_metadata.csv"), self.sftp_client)
+
+        self.data_path = pd.read_csv(data_file)
         self.data_path = self.data_path[self.data_path["CLASS"] != "Unclassified-PN"]
 
         self.data_path["IMG_PATH"] = self.data_path["FILE_PATH"].map(
@@ -63,13 +78,15 @@ class ClassificationDataset(torch.utils.data.Dataset):
         self.imgs, self.labels = self.imgs[data_idx], self.labels[data_idx]
         self.train_idx, self.val_idx, self.test_idx = self.dataset_split()
 
+        data_file.close()
+
     def __len__(self):
         return self.imgs.shape[0]
 
     def __getitem__(self, idx):
         # load image and label
         img_path = os.path.join(self.root, self.imgs[idx])
-        img = load_img(img_path)
+        img = load_img(img_path, self.sftp_client)
         label = self.labels[idx]
         label = torch.Tensor([label]).long()
 
