@@ -124,3 +124,50 @@ class ClassificationDataset(torch.utils.data.Dataset):
         return compute_class_weight('balanced',
                                     classes=np.unique(self.labels[self.train_idx]),
                                     y=self.labels[self.train_idx])
+
+
+class InferenceDataset(torch.utils.data.Dataset):
+    """Usage:
+
+    img, labels = dataset[idx]
+
+    img: [3, 224, 224] torch.Tensor for image
+    labels: [1,] torch.Tensor. each image's label.
+        Covid = 1, Other PN = 2, Viral PN = 3, normal = 0
+    """
+
+    def __init__(self, root="data_server"):
+        self.root = root
+
+        self.data_file = pd.read_csv(os.path.join(root, "class/meta/final_metadata.csv"))
+        self.data_file["IMG_PATH"] = self.data_file["FILE_PATH"].map(
+            lambda x: x[2:]) + self.data_file["FILE NAME"]
+
+        self.candidate = self.data_file[self.data_file["CLASS"] == "Unclassified-PN"]
+        # choose the images with only one bbox
+        self.candidate = self.candidate[self.candidate["IMG_PATH"].map(
+            self.candidate["IMG_PATH"].value_counts()) == 1]
+        self.imgs = self.candidate["IMG_PATH"].to_numpy()
+
+    def __len__(self):
+        return self.imgs.shape[0]
+
+    def __getitem__(self, idx):
+        # load image and label
+        img_path = os.path.join(self.root, self.imgs[idx])
+        img = load_img(img_path)
+
+        # normalize to [0, 1]
+        scaler = MinMaxScaler()
+        img = scaler.fit_transform(img.reshape(-1, img.shape[0])).reshape(img.shape)
+        img = torch.Tensor(img)
+
+        # data augmentation
+        target_transform = transforms.Compose([
+            transforms.Resize([224, 224]),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+
+        img = target_transform(img)
+
+        return img
