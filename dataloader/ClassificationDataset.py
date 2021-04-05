@@ -50,7 +50,7 @@ class ClassificationDataset(torch.utils.data.Dataset):
             'Viral-PN': 3
         }
 
-        self.data_path = pd.read_csv(os.path.join(root, "class/meta/final_metadata.csv"))
+        self.data_path = pd.read_csv(os.path.join(root, "class/meta/final1.csv"))
         self.data_path = self.data_path[self.data_path["CLASS"] != "Unclassified-PN"]
 
         self.data_path["IMG_PATH"] = self.data_path["FILE_PATH"].map(
