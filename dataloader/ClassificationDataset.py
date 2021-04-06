@@ -52,6 +52,7 @@ class ClassificationDataset(torch.utils.data.Dataset):
 
         self.data_path = pd.read_csv(os.path.join(root, "class/meta/final1.csv"))
         self.data_path = self.data_path[self.data_path["CLASS"] != "Unclassified-PN"]
+        self.data_path = self.data_path[self.data_path["CLASS"] != "COVID19-PN"]
 
         self.data_path["IMG_PATH"] = self.data_path["FILE_PATH"].map(
             lambda x: x[2:]) + self.data_path["FILE NAME"]
@@ -95,7 +96,7 @@ class ClassificationDataset(torch.utils.data.Dataset):
 
         img = train_transform(img) if idx in self.train_idx else target_transform(img)
 
-        return img, label
+        return img, label - 2
 
     def dataset_split(self):
         labels = self.labels
@@ -139,7 +140,7 @@ class InferenceDataset(torch.utils.data.Dataset):
     def __init__(self, root="data_server"):
         self.root = root
 
-        self.data_file = pd.read_csv(os.path.join(root, "class/meta/final_metadata.csv"))
+        self.data_file = pd.read_csv(os.path.join(root, "class/meta/final1.csv"))
         self.data_file["IMG_PATH"] = self.data_file["FILE_PATH"].map(
             lambda x: x[2:]) + self.data_file["FILE NAME"]
 

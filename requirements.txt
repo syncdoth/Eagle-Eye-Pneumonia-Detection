@@ -1,9 +1,9 @@
 pandas==1.1.5
 scipy==1.4.1
-tensorflow==2.4.0
+tensorflow-gpu>=2.4.0
 scikit-learn==0.24.1
-pytorch==1.7.1
-torchvision==0.8.2
+torch>=1.7.1
+torchvision>=0.8.2
 efficientnet_pytorch
 pydicom
 tqdm
